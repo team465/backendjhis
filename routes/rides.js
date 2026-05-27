@@ -44,6 +44,23 @@ router.post('/', authenticate, authorize('passenger'), async (req, res) => {
   }
 });
 
+// GET /api/rides/all — all rides for passenger (split into sections on client)
+router.get('/all', authenticate, authorize('passenger'), async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT r.*, u.name AS driver_name
+       FROM rides r
+       LEFT JOIN users u ON u.id = r.driver_id
+       WHERE r.passenger_id = $1
+       ORDER BY r.created_at DESC`,
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/rides/active — current active ride for passenger
 router.get('/active', authenticate, authorize('passenger'), async (req, res) => {
   try {
@@ -91,6 +108,22 @@ router.get('/upcoming', authenticate, authorize('passenger'), async (req, res) =
       [req.user.id]
     );
     res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/rides/:id/cancel-scheduled — cancel a scheduled ride
+router.patch('/:id/cancel-scheduled', authenticate, authorize('passenger'), async (req, res) => {
+  try {
+    const result = await pool.query(
+      `UPDATE rides SET status='cancelled', updated_at=NOW()
+       WHERE id=$1 AND passenger_id=$2 AND status='scheduled'
+       RETURNING *`,
+      [req.params.id, req.user.id]
+    );
+    if (!result.rows[0]) return res.status(404).json({ error: 'Scheduled ride not found' });
+    res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
