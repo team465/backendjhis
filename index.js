@@ -3,7 +3,8 @@ const cors = require('cors');
 require('dotenv').config();
 
 const usersRouter = require('./routes/users');
-const authRouter = require('./routes/auth');
+const authRouter  = require('./routes/auth');
+const ridesRouter = require('./routes/rides');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -16,6 +17,7 @@ app.use(cors({
 app.use(express.json());
 
 app.use('/api/auth', authRouter);
+app.use('/api/rides', ridesRouter);
 app.use('/api/users', usersRouter);
 
 app.listen(PORT, () => {
