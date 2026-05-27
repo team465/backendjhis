@@ -5,16 +5,38 @@ const { authenticate, authorize } = require('../middleware/auth');
 
 // POST /api/rides — create a ride (passenger)
 router.post('/', authenticate, authorize('passenger'), async (req, res) => {
-  const { pickup_address, destination_address, vehicle_type, fare, distance_km, duration_min, payment_method, ride_type } = req.body;
-  if (!pickup_address || !destination_address)
+  const {
+    pickup_address, destination_address, vehicle_type, fare, distance_km, duration_min,
+    payment_method, ride_type, booking_type, offered_fare, hire_description, scheduled_at,
+  } = req.body;
+  const btype = booking_type || 'standard';
+  if (btype === 'standard' && (!pickup_address || !destination_address))
     return res.status(400).json({ error: 'Pickup and destination are required' });
+  if (btype === 'full_day' && !pickup_address)
+    return res.status(400).json({ error: 'Pickup is required for full day hire' });
   try {
+    const status = btype === 'scheduled' ? 'scheduled' : 'pending';
     const result = await pool.query(
       `INSERT INTO rides
-        (passenger_id, pickup_address, destination_address, vehicle_type, fare, distance_km, duration_min, payment_method, ride_type)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [req.user.id, pickup_address, destination_address, vehicle_type || 'tuktuk',
-       fare, distance_km, duration_min, payment_method || 'cash', ride_type || 'private']
+        (passenger_id, pickup_address, destination_address, vehicle_type, fare, offered_fare,
+         hire_description, distance_km, duration_min, payment_method, ride_type, booking_type,
+         scheduled_at, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+      [req.user.id, pickup_address, destination_address || null, vehicle_type || 'tuktuk',
+       fare || null, offered_fare || null, hire_description || null,
+       distance_km || null, duration_min || null, payment_method || 'cash',
+       ride_type || 'private', btype, scheduled_at || null, status]
+    );
+    // Auto-create notification
+    await pool.query(
+      `INSERT INTO notifications (user_id, title, message, type)
+       VALUES ($1,$2,$3,$4)`,
+      [req.user.id,
+       btype === 'scheduled' ? 'Ride Scheduled' : 'Ride Booked',
+       btype === 'scheduled'
+         ? `Your ride is scheduled for ${scheduled_at}`
+         : `Looking for a driver to ${destination_address || 'your destination'}…`,
+       'ride_booked']
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
