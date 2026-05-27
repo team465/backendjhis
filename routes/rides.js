@@ -164,6 +164,30 @@ router.patch('/:id/rate', authenticate, authorize('passenger'), async (req, res)
   }
 });
 
+// GET /api/rides/favorites — drivers rated 4+ by this passenger (stub until favorites table exists)
+router.get('/favorites', authenticate, authorize('passenger'), async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT DISTINCT ON (r.driver_id)
+         r.driver_id AS id,
+         u.name AS driver_name,
+         r.vehicle_type,
+         ROUND(AVG(r.driver_rating) OVER (PARTITION BY r.driver_id), 1) AS average_rating,
+         FALSE AS is_online
+       FROM rides r
+       JOIN users u ON u.id = r.driver_id
+       WHERE r.passenger_id = $1
+         AND r.driver_rating >= 4
+         AND r.driver_id IS NOT NULL
+       ORDER BY r.driver_id, r.updated_at DESC`,
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/rides/:id — single ride detail
 router.get('/:id', authenticate, async (req, res) => {
   try {

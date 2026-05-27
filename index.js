@@ -26,6 +26,12 @@ app.use('/api/users',         usersRouter);
 app.use('/api/driver',        driverRouter);
 app.use('/api/admin',         adminRouter);
 
+// Global error handler — ensures errors always return JSON, never empty body
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
