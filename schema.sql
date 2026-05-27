@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS rides (
   vehicle_type        VARCHAR(20)  NOT NULL DEFAULT 'tuktuk',
   fare                NUMERIC(8,2),
   offered_fare        NUMERIC(8,2),
+  hire_description    TEXT,
   distance_km         NUMERIC(6,2),
   duration_min        INTEGER,
   payment_method      VARCHAR(20)  DEFAULT 'cash',
@@ -79,6 +80,21 @@ INSERT INTO fare_config (vehicle_type, base_fare, per_km, per_min, min_fare) VAL
   ('car',    2.00, 0.70, 0.12, 3.00),
   ('van',    3.00, 1.00, 0.15, 5.00)
 ON CONFLICT (vehicle_type) DO NOTHING;
+
+-- Platform settings (singleton row)
+CREATE TABLE IF NOT EXISTS platform_settings (
+  id               INTEGER PRIMARY KEY DEFAULT 1,
+  platform_name    VARCHAR(100) DEFAULT 'Jih',
+  support_email    VARCHAR(150) DEFAULT 'support@jihwolrd.com',
+  support_phone    VARCHAR(50)  DEFAULT '+855 12 345 678',
+  default_currency VARCHAR(10)  DEFAULT 'USD',
+  commission_pct   NUMERIC(5,2) DEFAULT 15,
+  ngo_pct          NUMERIC(5,2) DEFAULT 5,
+  booking_enabled  BOOLEAN      DEFAULT TRUE,
+  maintenance_mode BOOLEAN      DEFAULT FALSE,
+  updated_at       TIMESTAMP    DEFAULT NOW()
+);
+INSERT INTO platform_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 
 -- Default admin account  (password: Admin@1234)
 INSERT INTO users (name, email, password_hash, role, is_verified) VALUES (
